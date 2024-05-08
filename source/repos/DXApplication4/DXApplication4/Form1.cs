@@ -1,13 +1,11 @@
-﻿using Docnet.Core;
+using Docnet.Core;
 using Docnet.Core.Models;
 using Docnet.Core.Readers;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using Microsoft.Office.Interop.Word;
+using DevExpress.XtraBars;
 
 namespace DXApplication4
 {
@@ -28,8 +26,6 @@ namespace DXApplication4
         {
             Viewer.CurrentPageNumber = Viewer.PageCount;
         }
-
-
         private string extractText(int page_number,IDocReader docReader)
         {
             string extracted_text = "";
@@ -40,33 +36,49 @@ namespace DXApplication4
             }
             return extracted_text;
         }
-
-        private void barButtons_extract_text(object sender, DevExpress.XtraBars.ItemClickEventArgs e)
+        private void barButton_extractPageText_event(object sender, ItemClickEventArgs e)
         {
             string extracted_text = "";
             if (File.Exists(Viewer.DocumentFilePath))
             {
                 using (var docReader = DocLib.Instance.GetDocReader(Viewer.DocumentFilePath, new PageDimensions()))
                 {
-                    // error in == and transfer always to else
-                    if (sender != null)
-                    {
-                        DevExpress.XtraBars.BarButtonItem btn = sender as DevExpress.XtraBars.BarButtonItem;
-                        if (btn == barButton_extractFileText)
-                        {
-                            for (var i = 0; i < docReader.GetPageCount(); i++)
-                            {
-                                MessageBox.Show(docReader.GetPageCount().ToString());
-                                extracted_text += extractText(i, docReader);
-                            }
-                        }
-                        else
-                            extracted_text += extractText(Viewer.CurrentPageNumber - 1, docReader);
-                    }
+                    extracted_text += extractText(Viewer.CurrentPageNumber - 1, docReader);
                 }
-                Clipboard.SetText(extracted_text);
-                MessageBox.Show("تم نسخ النص الى الحافظة", "", MessageBoxButtons.OK,MessageBoxIcon.Information) ;
+                barButtons_extract_text(extracted_text);
             }
         }
+        private void barButton_extractFileText_event(object sender, ItemClickEventArgs e)
+        {
+            string extracted_text = "";
+            if (File.Exists(Viewer.DocumentFilePath))
+            {
+                using (var docReader = DocLib.Instance.GetDocReader(Viewer.DocumentFilePath, new PageDimensions()))
+                {
+                    for (var i = 0; i < docReader.GetPageCount(); i++)
+                    {
+                        extracted_text += extractText(i, docReader);
+                    }
+                }
+                barButtons_extract_text(extracted_text);
+            }
+        }
+        private void barButtons_extract_text(string extracted_text)
+        {
+            string tempPath = Path.GetTempFileName();
+            using (StreamWriter writer = new StreamWriter(tempPath))
+            {
+                writer.Write(extracted_text);
+            }
+
+            Microsoft.Office.Interop.Word.Application wordApp = new Microsoft.Office.Interop.Word.Application();
+            Document wordDoc = wordApp.Documents.Open(tempPath);
+            wordApp.Visible = true;
+        }
+
+        private void Viewer_Load(object sender, EventArgs e)
+        {
+
+        }
     }
-}   
+}
